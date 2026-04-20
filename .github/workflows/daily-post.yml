@@ -1,0 +1,68 @@
+name: daily-post
+on:
+  # The primary entry point is workflow_dispatch, invoked by the Claude Code
+  # scheduled trigger (docs/SCHEDULED_PROMPT.md) after it pre-generates copy.
+  # The cron below is a safety net in case the trigger doesn't fire — it will
+  # fall through to the API-key path if ANTHROPIC_API_KEY is set, else fail.
+  schedule:
+    - cron: "0 22 * * *"  # 22:00 UTC = 5pm Chicago (CDT)
+  workflow_dispatch:
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: daily-post
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Python setup
+        run: uv python install 3.11
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Restore state + queue
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/state.json
+            data/queue
+            data/posted
+          key: ig-poster-state-${{ github.run_id }}
+          restore-keys: |
+            ig-poster-state-
+
+      - name: Run pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          META_APP_ID: ${{ secrets.META_APP_ID }}
+          META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
+          POST_STYLE: ${{ vars.POST_STYLE || 'static_video' }}
+        run: uv run python -m src.main
+
+      - name: Commit state back
+        if: always()
+        run: |
+          git config user.name "ig-poster-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/state.json || true
+          git diff --staged --quiet || git commit -m "chore: update state $(date -u +%FT%TZ)"
+          git push || true

@@ -1,0 +1,37 @@
+# secrets
+.env
+.env.local
+*.pem
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ruff_cache/
+.pytest_cache/
+
+# data (don't commit video/image files, but DO commit state + llm sidecars)
+data/raw/*
+data/queue/*
+data/posted/*
+data/static/*
+!data/raw/.gitkeep
+!data/queue/.gitkeep
+!data/posted/.gitkeep
+!data/static/.gitkeep
+# Pre-generated LLM copy (hook/caption/hashtags) produced by the scheduled
+# trigger — must be committed so GitHub Actions can read it.
+!data/queue/*.llm.json
+!data/posted/*.llm.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# uv
+uv.lock
+
+# runtime log
+run.log
