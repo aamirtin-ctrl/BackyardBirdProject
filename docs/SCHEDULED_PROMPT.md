@@ -24,25 +24,37 @@ Repo: https://github.com/<OWNER>/<REPO>   ← replace before first run
 4. The first clip that passes both checks is the target. If no target exists, log "queue exhausted" and stop.
 
 ## Read clip metadata
-5. Open `<clip>.json` (the source sidecar, e.g. `pexels_12345.json`). Fields include `title`, `description`, `subject`, `tags`, `source_url`, `source`.
+5. Open `<clip>.json` (the source sidecar, e.g. `pexels_12345.json`). The key fields to focus on:
+   - `species_verified`: the actual species shown in the clip, extracted from the source platform's slug. **THIS IS THE TRUTH.**
+   - `query_used`: the search term that found the clip. **IT IS OFTEN WRONG.** A search for "bald eagle" may return a "white-bellied sea eagle" clip. Do NOT use this for species identification.
+   - `source_url`: the Pexels/Pixabay page URL — cross-check `species_verified` against this slug yourself if anything feels off.
+
+## SPECIES ACCURACY — READ THIS BEFORE WRITING
+6. This has historically been the #1 failure mode of this pipeline: writing a caption for the wrong species.
+   - If `species_verified` is a valid species name, every specific claim in the caption (population numbers, threat status, geographic range, legal protections, evolutionary history) must apply to THAT species. Not to the species implied by `query_used`.
+   - If `species_verified` is empty, null, or "unknown", write a GENERIC caption that does not name a specific species. Use phrases like "these birds", "the heron", "a raptor at dusk". Generic-but-correct beats specific-but-wrong every time.
+   - When in doubt about whether a claim applies to this exact species, pull back to a broader habitat-level or genus-level claim that clearly applies.
+
+   **Concrete example of the failure mode to avoid:**
+   A past post used a clip whose slug was `majestic-sea-eagle-perched-outdoors` (a white-bellied sea eagle, found in Indo-Pacific Asia/Australia). The caption was written about the North American bald eagle's DDT recovery, citing 1963 population numbers and the Endangered Species Act. These facts apply to a completely different species on a different continent. Never again.
 
 ## Generate copy
-6. Read the voice rules from two places and follow them precisely:
-   - Hook rules: `src/caption.py` → `HOOK_SYSTEM_PROMPT` constant
-   - Caption rules: `src/caption.py` → `SYSTEM_PROMPT` constant
-   Plus the project feedback memory: /Users/aamirtinwala/.claude/projects/-Users-aamirtinwala-Desktop-Market-Research-agent-md-files/memory/feedback_ig_poster_content_rules.md
+7. Read the voice rules from two places and follow them precisely:
+   - Hook rules: `src/caption.py` → `HOOK_SYSTEM_PROMPT` constant (includes species-accuracy rule)
+   - Caption rules: `src/caption.py` → `SYSTEM_PROMPT` constant (includes species-accuracy rule + full reference caption)
+   - Project feedback memory: /Users/aamirtinwala/.claude/projects/-Users-aamirtinwala-Desktop-Market-Research-agent-md-files/memory/feedback_ig_poster_content_rules.md
 
-7. Generate three outputs for THIS specific clip (using the metadata to anchor the content — don't write generic bird copy):
-   - `hook`: one line, 4–10 words, following HOOK_SYSTEM_PROMPT. Tender/haunting/provocative, species-specific, no em dashes, no banned phrases.
-   - `caption`: 90–160 words following SYSTEM_PROMPT. Hook line → body (3–6 sentences with specifics, numbers, places, names) → close (1–2 sentences, no moralizing). Absolutely no em dashes.
-   - `hashtags`: 15–20 hashtags, mix broad (#documentary, #wildlife) and niche (e.g. #kakapo, #sixthmassextinction).
+8. Generate three outputs for THIS specific clip, anchored on `species_verified` (not `query_used`):
+   - `hook`: one line, 4–10 words. Tender/haunting/provocative. If species is verified, can name it; if not, stay generic. No em dashes.
+   - `caption`: 90–160 words. Hook line + cohesive narrative body (sentences chain with connectives, vary in length, focus on dangers this species faces with concrete specifics). No em dashes.
+   - `hashtags`: 15–20 hashtags, mix broad (#wildlife, #conservation, #birding) and niche (species-specific tag based on species_verified, plus threat-specific tags).
 
-8. Self-check before writing:
+9. Self-check BEFORE writing to the sidecar:
+   - **Species check:** the species claimed in the caption matches `species_verified` exactly, OR the caption is generic. If `query_used` and `species_verified` differ, the caption is about species_verified.
+   - **Fact check:** every specific number/year/threat named in the caption applies to the verified species. If you cannot confirm, remove the specific claim or broaden it to the habitat.
    - No em dashes anywhere. Scan for \u2014 and \u2013. If present, rewrite.
-   - No banned phrases in either hook or caption: "dive in", "let's explore", "did you know", "stunning", "amazing", "mind-blowing", "you won't believe", "fun fact", "imagine if", "the beauty of", "majestic creature".
-   - Caption word count is in 90–160.
-   - Hook word count is in 4–10.
-   - Hashtag count is in 15–20.
+   - No banned phrases: "dive in", "let's explore", "did you know", "stunning", "amazing", "mind-blowing", "you won't believe", "fun fact", "imagine if", "the beauty of", "majestic creature", "incredible", "nature's wonder".
+   - Caption 90–160 words. Hook 4–10 words. Hashtags 15–20.
 
 ## Write sidecar + push
 9. Write the JSON to `<clip_path_without_extension>.llm.json` with exactly three keys: `hook`, `caption`, `hashtags`.

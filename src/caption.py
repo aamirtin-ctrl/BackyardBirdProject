@@ -14,6 +14,19 @@ MODEL = "claude-sonnet-4-5"
 
 SYSTEM_PROMPT = """You write Instagram captions for a wildlife/conservation account focused on birds. The voice is informed, a little confrontational, and built to make people stop scrolling. The caption is ONE hook line followed by cohesive narrative prose. It is not a list of punchy one-liners.
 
+SPECIES ACCURACY — ABSOLUTE PRIORITY.
+
+The clip metadata contains two species-related fields:
+  - `query_used`: the search term used to FIND the clip (may be wrong)
+  - `species_verified`: the species actually shown in the clip, extracted from the source platform's own title/slug
+
+You MUST write the caption about `species_verified` if it is present. Ignore `query_used` for species identification. They are frequently different — e.g. a search for "bald eagle" may return a "white-bellied sea eagle" clip. Writing about the wrong species is a catastrophic error.
+
+If `species_verified` is empty or "unknown", write the caption in generic terms ("the heron," "these birds," "a raptor at dusk") — do NOT name a species you cannot confirm. Generic but correct beats specific but wrong.
+
+When writing conservation specifics (population numbers, threat history, legal protections, geographic range), they must apply to `species_verified` — NOT to a different species the reader might expect. A white-bellied sea eagle is NOT a bald eagle: different continent, different listing status, different threats. If you are unsure of the exact conservation facts for the verified species, write about a threat category that clearly applies to the broader genus or habitat, and keep claims conservative.
+
+
 Shape:
 
 1. HOOK (line 1, standalone): Short. Accusatory, provocative, or quietly devastating. One fact or claim that indicts a comfortable assumption. Should make the reader stop scrolling.
@@ -134,18 +147,21 @@ def generate_caption(clip_metadata: dict, api_key: str, clip_path=None) -> dict[
 
     client = Anthropic(api_key=api_key)
 
+    species_verified = clip_metadata.get("species_verified") or ""
+    query_used = clip_metadata.get("query_used") or ""
     user_parts = [
         f"Source: {clip_metadata.get('source', 'unknown')}",
         f"Source URL: {clip_metadata.get('source_url', '')}",
+        f"species_verified: {species_verified or '(none — write generically, do not name a species)'}",
+        f"query_used (may differ from actual subject, DO NOT trust for species ID): {query_used}",
         f"Title: {clip_metadata.get('title', '')}",
     ]
     desc = (clip_metadata.get("description") or "").strip()
     if desc:
         user_parts.append(f"Description: {desc[:800]}")
-    subject = clip_metadata.get("subject") or clip_metadata.get("title") or ""
-    user_parts.append(f"Subject matter: {subject}")
     user_parts.append(
-        "\nWrite the caption now. Return only the JSON object, no preamble."
+        "\nWrite the caption now. Return only the JSON object, no preamble. "
+        "Remember: species_verified is the truth. If it is empty, stay generic."
     )
 
     log.info("generating caption for: %s", clip_metadata.get("title", "?")[:60])
@@ -184,6 +200,8 @@ HOOK_SYSTEM_PROMPT = """You write the single-line hook that appears on the stati
 
 The hook sits over a cinematic photograph of a bird in the wild. It is the only text on the image. The viewer reads it in under two seconds and then swipes to the video.
 
+SPECIES ACCURACY: the clip metadata contains `species_verified` (the actual species shown, from the source platform's own title) and `query_used` (the search term that found it — may be wrong). If `species_verified` is present, the hook MUST be about that species. If it is empty, write a generic hook that does not name a specific species. Never name a species you cannot confirm from the metadata.
+
 Write one line only. Rules:
 - 4 to 10 words. Tight.
 - Must feel specific to THIS clip's subject (species, behavior, environment). Not generic.
@@ -207,6 +225,22 @@ Good examples (different subjects, different energies):
 Return JSON: {"hook": "your single line here"}"""
 
 
+def _hook_user_message(clip_metadata: dict) -> str:
+    species_verified = clip_metadata.get("species_verified") or ""
+    query_used = clip_metadata.get("query_used") or ""
+    subject = clip_metadata.get("subject") or clip_metadata.get("title") or ""
+    parts = [
+        f"species_verified: {species_verified or '(none — write a generic hook, do not name a species)'}",
+        f"query_used (may be wrong, DO NOT trust for species ID): {query_used}",
+        f"Subject: {subject}",
+    ]
+    desc = (clip_metadata.get("description") or "").strip()
+    if desc:
+        parts.append(f"Notes from source: {desc[:400]}")
+    parts.append("\nReturn JSON only. Remember: species_verified is truth.")
+    return "\n".join(parts)
+
+
 def generate_hook(clip_metadata: dict, api_key: str, clip_path=None) -> str:
     """Return a single hook line for the static slide.
 
@@ -225,18 +259,10 @@ def generate_hook(clip_metadata: dict, api_key: str, clip_path=None) -> str:
         )
 
     client = Anthropic(api_key=api_key)
-    subject = (
-        clip_metadata.get("subject")
-        or clip_metadata.get("title")
-        or "a bird in the wild"
-    )
-    desc = (clip_metadata.get("description") or "").strip()
-    user = f"Subject: {subject}"
-    if desc:
-        user += f"\nNotes from source: {desc[:400]}"
-    user += "\n\nReturn JSON only."
-
-    log.info("generating hook for: %s", subject[:60])
+    user = _hook_user_message(clip_metadata)
+    log.info("generating hook for species=%r (query=%r)",
+             clip_metadata.get("species_verified", ""),
+             clip_metadata.get("query_used", ""))
     resp = client.messages.create(
         model=MODEL,
         max_tokens=200,

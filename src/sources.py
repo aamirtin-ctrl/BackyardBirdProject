@@ -22,62 +22,71 @@ from .config import Config, RAW_DIR
 
 log = logging.getLogger(__name__)
 
-# Birds-first seed queries — leaning into Pexels' actual strengths:
-# flight silhouettes against sunset skies, golden-hour atmospherics, and
-# macro close-ups. These are the categories where Pexels has deep high-
-# quality inventory. Dramatic predator-hunting footage mostly lives on
-# paid platforms; we don't fight the stock-site content gap.
+# Birds-first seed queries — reweighted to heavily prefer CLOSE-UPS and
+# FLOCKS. Single-bird-flying-against-empty-sky shots read as too distant;
+# the user wants subjects that fill the frame or collections of subjects
+# that do. Listed by preference priority within categories.
 WILDLIFE_QUERIES: list[str] = [
-    # flight silhouettes against sky / sunset
-    "bird silhouette sunset sky",
-    "eagle silhouette sunset",
-    "hawk silhouette sunset",
-    "heron silhouette sunset water",
-    "flamingo silhouette sunset",
-    "pelican silhouette sunset",
-    "crane silhouette sunset",
-    "flock birds silhouette sunset",
-    "seabirds silhouette golden hour",
-    "bird silhouette dawn sky",
-    # golden hour / atmospheric
-    "heron golden hour water",
-    "great blue heron sunset",
-    "egret sunset water",
-    "swan sunrise lake",
-    "flamingo sunset wading",
-    "eagle golden hour flying",
-    "owl sunset flying",
-    # macro / close-up with motion or personality
-    "hummingbird close up flower macro",
-    "hummingbird wings slow motion",
-    "owl close up eyes blinking",
-    "eagle head close up",
-    "parrot eye close up",
-    "kingfisher feathers close up",
-    "bird feather macro wind",
+    # MACROS / close-ups (priority 1) — subject fills the frame
+    "hummingbird macro flower close up",
+    "hummingbird wings slow motion close up",
+    "hummingbird nectar feeding macro",
+    "owl eyes close up",
+    "owl face close up",
+    "eagle head close up feathers",
+    "hawk head close up",
+    "parrot eye close up macro",
+    "kingfisher close up",
     "pelican head close up",
-    # water + splash atmospheres
-    "duck takeoff water splash slow motion",
-    "swan wings spreading water sunset",
-    "egret wings flapping water",
-    "flamingo flock wading",
-    "heron wading sunset close up",
-    # flocks / murmurations
+    "heron head close up",
+    "bird feather macro wind",
+    "peacock feathers close up macro",
+    "bird of paradise close up",
+    # FLOCKS / murmurations (priority 2) — many subjects, visually dense
     "starling murmuration sunset",
-    "flock geese flying sunset",
-    "flock cranes flying sunset",
-    "seagulls flying cliff sunset",
-    # slow-motion flight + landing
-    "owl flying slow motion",
-    "eagle landing slow motion",
-    "snowy owl flying snow",
-    "bald eagle flying slow motion",
-    "macaw flying rainforest slow motion",
-    "puffin flying cliff sea",
-    # non-bird wildlife fallback (cinematic)
-    "sea turtle swimming ocean sunset",
-    "monarch butterfly macro slow motion",
-    "coral reef fish slow motion",
+    "starling murmuration sky",
+    "flock birds silhouette sunset",
+    "flamingo flock wading sunset",
+    "flamingo flock flying",
+    "geese flock flying sunset",
+    "cranes flock flying sunset",
+    "seabirds flock cliff",
+    "pelican flock ocean",
+    "flock birds sunset sky",
+    # Water birds close + action (priority 3) — surface shots, frame-filling
+    "duck takeoff water splash close up",
+    "swan wings spreading water close up",
+    "pelican gliding water close up",
+    "egret wings flapping water close up",
+    "heron wading sunset close up",
+    "great blue heron fishing close up",
+    "flamingo wading close up",
+    # Atmospheric silhouettes (priority 4) — keep but lower weight
+    "bird silhouette sunset sky",
+    "flock birds silhouette golden hour",
+    # EXOTIC / TROPICAL birds (colorful, rare, striking) — close-ups preferred
+    "scarlet macaw close up",
+    "blue macaw close up",
+    "hyacinth macaw close up",
+    "toucan close up beak",
+    "resplendent quetzal",
+    "bird of paradise courtship close up",
+    "lilac breasted roller close up",
+    "mandarin duck close up",
+    "hornbill close up",
+    "puffin beak close up",
+    "cockatoo close up",
+    "peacock feathers macro",
+    "sunbird flower close up",
+    "kingfisher close up colorful",
+    "flamingo close up beak",
+    "parrot rainbow close up",
+    "bee eater close up",
+    "paradise tanager close up",
+    # Non-bird wildlife fallback (cinematic close-ups)
+    "sea turtle close up underwater",
+    "monarch butterfly macro",
+    "coral reef macro close up",
 ]
 
 # archive.org fallback — collections skewed toward PD nature.
@@ -263,6 +272,71 @@ def _write_sidecar(path: Path, meta: dict[str, Any]) -> None:
     path.with_suffix(".json").write_text(json.dumps(meta, indent=2))
 
 
+# Known species the platform cares about. Used to extract the ACTUAL
+# species shown (from the Pexels slug/title) rather than trusting the
+# search query — e.g. query "bald eagle" may return clips whose slug
+# actually shows a "white-bellied sea eagle". The caption must be about
+# what the clip actually contains.
+KNOWN_SPECIES_TERMS = [
+    # eagles / raptors
+    "bald eagle", "golden eagle", "white-bellied sea eagle", "sea eagle",
+    "harpy eagle", "philippine eagle", "white tailed eagle", "eagle",
+    "osprey", "peregrine falcon", "falcon", "red-tailed hawk", "hawk",
+    "kite", "harrier", "kestrel", "caracara", "secretary bird",
+    # owls
+    "great horned owl", "snowy owl", "barn owl", "barred owl",
+    "screech owl", "eagle owl", "burrowing owl", "owl",
+    # parrots
+    "scarlet macaw", "blue and gold macaw", "hyacinth macaw", "macaw",
+    "african grey parrot", "amazon parrot", "parrot", "cockatoo",
+    "parakeet", "budgerigar", "budgie", "conure", "lovebird",
+    # tropical / exotic
+    "toucan", "keel billed toucan", "resplendent quetzal", "quetzal",
+    "hornbill", "bird of paradise", "lilac breasted roller", "roller",
+    "bee eater", "kingfisher", "paradise tanager", "tanager",
+    "hoatzin", "mandarin duck",
+    # water birds
+    "pelican", "brown pelican", "white pelican",
+    "great blue heron", "grey heron", "heron", "great egret", "egret",
+    "ibis", "spoonbill", "flamingo", "stork", "crane", "whooping crane",
+    "sandhill crane", "swan", "mute swan", "whooping swan",
+    "mallard", "wood duck", "duck", "goose", "loon", "grebe", "cormorant",
+    # seabirds
+    "albatross", "gannet", "gull", "tern", "puffin", "atlantic puffin",
+    "razorbill", "penguin",
+    # shorebirds
+    "sandpiper", "plover", "avocet", "oystercatcher", "stilt",
+    # passerines
+    "cardinal", "robin", "bluebird", "sparrow", "finch", "chickadee",
+    "warbler", "jay", "blue jay", "magpie", "crow", "raven", "starling",
+    "mockingbird", "woodpecker", "hummingbird", "anna's hummingbird",
+    "ruby throated hummingbird", "sunbird",
+    # upland game
+    "pheasant", "grouse", "sage grouse", "turkey", "peacock", "peafowl",
+    "quail",
+    # kiwi / emu / ostrich
+    "kiwi", "emu", "ostrich", "cassowary", "shoebill", "kakapo",
+]
+
+
+def _extract_species(title: str, description: str, query: str) -> str:
+    """Best-effort species name from the clip's own metadata.
+
+    Priority: title/description (ground truth from Pexels/Pixabay) over the
+    search query (which may be a semantically-adjacent miss). Returns the
+    longest/most-specific match, or empty string if nothing matches.
+    """
+    blob = f"{title} {description}".lower()
+    # Strip hyphens/underscores so multi-word species names match.
+    blob = re.sub(r"[-_/]+", " ", blob)
+    matches = [s for s in KNOWN_SPECIES_TERMS if s in blob]
+    if not matches:
+        return ""
+    # Prefer the longest (most specific) match.
+    matches.sort(key=len, reverse=True)
+    return matches[0]
+
+
 # ----------------------------- Pexels ----------------------------------
 
 def pull_from_pexels(
@@ -377,15 +451,28 @@ def pull_from_pexels(
         log.info("Pexels: downloading id=%s %dx%d %ss",
                  vid_id, picked["width"], picked["height"], v.get("duration"))
         if _download(picked["link"], out_path):
-            _write_sidecar(out_path, {
+            # Extract ACTUAL species from the Pexels URL slug — this is the
+            # failsafe against "query was 'bald eagle' but the clip is
+            # actually a white-bellied sea eagle" misidentification.
+            species = _extract_species(page_url, "", query)
+            sidecar_meta = {
                 "source": "pexels",
                 "source_url": page_url,
                 "identifier": vid_id,
                 "title": f"{query} (Pexels {vid_id})",
                 "description": f"Pexels video by {v.get('user', {}).get('name', '')}",
-                "subject": query,
+                "query_used": query,
+                "species_verified": species,
+                "species_source": "pexels_slug" if species else "unknown",
+                "subject": species or query,
                 "tags": tags,
-            })
+            }
+            if not species:
+                log.warning("Pexels %s: could not extract species from slug %s — caption must be generic",
+                            vid_id, page_url)
+            else:
+                log.info("Pexels %s: verified species = %r (from slug)", vid_id, species)
+            _write_sidecar(out_path, sidecar_meta)
             out.append(out_path)
     log.info("Pexels: pulled %d/%d for %r (skipped: %s)", len(out), count, query, skipped)
     return out
@@ -488,15 +575,24 @@ def pull_from_pixabay(
         log.info("Pixabay: downloading id=%s %dx%d %ss",
                  vid_id, picked["width"], picked["height"], h.get("duration"))
         if _download(picked["url"], out_path):
-            _write_sidecar(out_path, {
+            species = _extract_species(page_url, tags_raw, query)
+            sidecar_meta = {
                 "source": "pixabay",
                 "source_url": page_url,
                 "identifier": vid_id,
                 "title": f"{query} (Pixabay {vid_id})",
                 "description": tags_raw,
-                "subject": query,
+                "query_used": query,
+                "species_verified": species,
+                "species_source": "pixabay_tags" if species else "unknown",
+                "subject": species or query,
                 "tags": tags,
-            })
+            }
+            if not species:
+                log.warning("Pixabay %s: could not extract species from tags %r", vid_id, tags_raw)
+            else:
+                log.info("Pixabay %s: verified species = %r", vid_id, species)
+            _write_sidecar(out_path, sidecar_meta)
             out.append(out_path)
     log.info("Pixabay: pulled %d/%d for %r (skipped: %s)", len(out), count, query, skipped)
     return out
