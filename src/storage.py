@@ -24,16 +24,27 @@ def _client(cfg: Config):
     )
 
 
+CONTENT_TYPES = {
+    ".mp4": "video/mp4",
+    ".mov": "video/quicktime",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
+
+
 def upload(local_path: Path, cfg: Config, key: str | None = None) -> str:
     """Upload local_path to R2, return public URL."""
     key = key or local_path.name
     client = _client(cfg)
-    log.info("R2: uploading %s -> s3://%s/%s", local_path.name, cfg.r2_bucket, key)
+    ctype = CONTENT_TYPES.get(local_path.suffix.lower(), "application/octet-stream")
+    log.info("R2: uploading %s (%s) -> s3://%s/%s", local_path.name, ctype, cfg.r2_bucket, key)
     client.upload_file(
         str(local_path),
         cfg.r2_bucket,
         key,
-        ExtraArgs={"ContentType": "video/mp4"},
+        ExtraArgs={"ContentType": ctype},
     )
     base = cfg.r2_public_base_url.rstrip("/")
     url = f"{base}/{key}"

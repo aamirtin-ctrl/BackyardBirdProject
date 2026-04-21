@@ -208,46 +208,35 @@ On the app dashboard, scroll to **Add products to your app** and find the card t
    Tap **Allow all**.
 5. After redirect, the API setup page now lists your connected account. Copy the **Instagram-scoped user ID** (a 17-digit number) → save as `IG_USER_ID` in your scratch file.
 
-**4.6 Generate a short-lived access token**
+**4.6 Generate the access token**
 1. Still on the API setup page, next to your connected account, click **Generate token**.
-2. A popup shows the token (starts with `IGQ...`). Copy it → save as `SHORT_TOKEN` in your scratch file.
-3. This token is valid for **1 hour**. Move to 4.7 promptly.
+2. A popup shows the token (starts with `IGA...` or `IGQ...`). Copy it.
+3. **This token is already long-lived (60 days).** The Instagram Login API issues long-lived tokens directly — no exchange step needed, unlike the legacy Facebook Graph API flow. Save it as `IG_ACCESS_TOKEN`.
+4. Verify immediately with:
+   ```bash
+   curl -s "https://graph.instagram.com/v21.0/me?fields=id,username,account_type&access_token=<TOKEN>"
+   ```
+   Expect: `{"id":"...","username":"yourhandle","account_type":"BUSINESS"}`.
 
 **4.7 Grab app credentials**
 1. Top-left menu on the app dashboard → **App settings** → **Basic**.
 2. Look for **Instagram App ID** (NOT the "App ID" at the very top of the page — that's the Meta app ID, a different number). Copy → `META_APP_ID`.
 3. Find **Instagram App Secret** → click **Show** → copy → `META_APP_SECRET`.
 
-**4.8 Exchange the short-lived token for a 60-day token**
-Run this in your terminal (replace the placeholders):
-
-```bash
-curl -G "https://graph.instagram.com/access_token" \
-  --data-urlencode "grant_type=ig_exchange_token" \
-  --data-urlencode "client_secret=<META_APP_SECRET>" \
-  --data-urlencode "access_token=<SHORT_TOKEN>"
+**4.8 Fill `.env`**
 ```
-
-Expected response:
-```json
-{"access_token": "IGQWRxx...", "token_type": "bearer", "expires_in": 5184000}
-```
-
-`expires_in: 5184000` = 60 days. Copy the `access_token` value into your scratch file as `IG_ACCESS_TOKEN`.
-
-**4.9 Fill `.env`**
-```
-IG_USER_ID=<from 4.5>
-IG_ACCESS_TOKEN=<long-lived, from 4.8>
-META_APP_ID=<from 4.7>
+IG_USER_ID=<from 4.5, the ID returned by /me in 4.6 is the canonical one if they differ>
+IG_ACCESS_TOKEN=<from 4.6>
+META_APP_ID=<Instagram App ID, from 4.7>
 META_APP_SECRET=<from 4.7>
 ```
 
-**4.10 Troubleshooting**
+**4.9 Troubleshooting**
 
 | Error | Likely cause & fix |
 |---|---|
-| `Invalid OAuth access token` | Short token expired (>1 hour) before you ran 4.8. Go back to 4.6 to regenerate it. |
+| `Insufficient Developer Role` (OAuth screen at 4.5) | The IG account hasn't been added as an Instagram Tester. Meta app dashboard → **App Roles → Roles → Instagram Testers** tab → **Add Instagram Testers** → enter your IG username. Then in Instagram: Settings → Apps and websites → **Tester Invites** → Accept. Retry 4.5. |
+| `Session key invalid` / `Invalid Access Token` (code 452) when running the old exchange curl | You don't need the exchange step anymore — see 4.6. The Instagram Login API issues long-lived tokens directly. |
 | `The user is not a Business Account` | 4.1 wasn't completed, or you picked Creator instead of Business. Redo the switch on mobile. |
 | `Application does not have permission for this action` | You didn't grant all four scopes in 4.5. On the Meta app page, remove your account and re-authorize (or use the IG app: Settings → Security → Apps and websites → remove, then re-do 4.5). |
 | `Media not found` during publishing | Means Instagram couldn't fetch your R2 URL. See the R2 common errors in §3.8. |
@@ -257,7 +246,7 @@ META_APP_SECRET=<from 4.7>
 
 **Development mode:** while the Meta app is in Development mode, it can only post to Instagram accounts explicitly added in 4.5 — **which is exactly the behavior you want** for a single-user setup. Do NOT submit for App Review.
 
-**4.11 Token maintenance**
+**4.10 Token maintenance**
 
 The 60-day token can be refreshed any time within that window. Refreshing resets the 60-day counter.
 
