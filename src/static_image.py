@@ -23,7 +23,7 @@ from .post_styles import StaticVideoStyle
 log = logging.getLogger(__name__)
 
 CANVAS_W = 1080
-CANVAS_H = 1920
+CANVAS_H = 1350   # 4:5 — the aspect ratio Instagram uses for feed carousels
 
 
 # ----------------------------- frame extraction -------------------------

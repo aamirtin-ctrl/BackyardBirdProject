@@ -14,7 +14,8 @@ from .config import QUEUE_DIR
 log = logging.getLogger(__name__)
 
 TARGET_W = 1080
-TARGET_H = 1920
+TARGET_H = 1350   # 4:5 — matches the static slide so the carousel displays cleanly
+# (9:16 is Reels-only; carousels require all items to share aspect ratio)
 # Short-form: aim for ~10s, start near the beginning to grab the strongest moment.
 TARGET_START = 0.0
 TARGET_END = 15.0
