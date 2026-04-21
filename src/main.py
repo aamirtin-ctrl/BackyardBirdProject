@@ -20,7 +20,19 @@ STATIC_DIR = DATA_DIR / "static"
 
 
 def _queue_clips() -> list[Path]:
-    return sorted(QUEUE_DIR.glob("*.mp4"), key=lambda p: p.stat().st_mtime)
+    """Return queued clips as .json sidecar paths.
+
+    We index by sidecar JSON (always in git) rather than .mp4 (may be
+    missing on a fresh GH Actions runner). The actual mp4 is materialized
+    lazily via sources.ensure_local_video() before processing.
+    """
+    jsons = [
+        p for p in QUEUE_DIR.glob("*.json")
+        if not p.name.endswith(".llm.json")
+    ]
+    # Sort by filename — the filenames start with ISO timestamps so this
+    # is effectively chronological and stable across machines (mtime isn't).
+    return sorted(jsons, key=lambda p: p.name)
 
 
 def _topup_queue(cfg: Config) -> None:
@@ -76,10 +88,17 @@ def _topup_queue(cfg: Config) -> None:
 
 
 def _pick_next(cfg: Config) -> Path | None:
-    for clip in _queue_clips():
-        if state.was_posted(clip.name):
+    """Pick next un-posted clip. Returns the .mp4 path (materialized on demand)."""
+    for sidecar in _queue_clips():
+        mp4_name = sidecar.with_suffix(".mp4").name
+        if state.was_posted(mp4_name):
             continue
-        return clip
+        # Materialize the mp4 if missing (fresh GH Actions runner).
+        mp4 = sources.ensure_local_video(sidecar, cfg)
+        if not mp4:
+            log.warning("skip %s: could not materialize mp4", sidecar.name)
+            continue
+        return mp4
     return None
 
 

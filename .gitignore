@@ -12,19 +12,27 @@ venv/
 .ruff_cache/
 .pytest_cache/
 
-# data (don't commit video/image files, but DO commit state + llm sidecars)
+# data — don't commit binaries (mp4s, jpegs) but DO commit the small
+# JSON sidecars that describe the queue + state. Binaries get re-downloaded
+# from source_url at runtime by ensure_local_video().
 data/raw/*
-data/queue/*
-data/posted/*
-data/static/*
+data/queue/*.mp4
+data/queue/*.mov
+data/posted/*.mp4
+data/posted/*.mov
+data/static/*.jpg
+data/static/*.jpeg
+data/static/*.png
 !data/raw/.gitkeep
 !data/queue/.gitkeep
 !data/posted/.gitkeep
 !data/static/.gitkeep
-# Pre-generated LLM copy (hook/caption/hashtags) produced by the scheduled
-# trigger — must be committed so GitHub Actions can read it.
-!data/queue/*.llm.json
-!data/posted/*.llm.json
+# Source metadata sidecars (from Pexels/Pixabay at ingest) and pre-generated
+# LLM copy (hook/caption/hashtags from the scheduled trigger) — BOTH commit
+# so the remote trigger and GitHub Actions can see the queue without needing
+# the big binary files.
+!data/queue/*.json
+!data/posted/*.json
 
 # OS
 .DS_Store

@@ -252,6 +252,85 @@ def _has_human(tags: list[str], text: str = "") -> bool:
     return any(re.search(rf"\b{re.escape(m)}\b", t) for m in HUMAN_MARKERS)
 
 
+def ensure_local_video(clip_json: Path, cfg: "Config") -> Path | None:
+    """Guarantee the .mp4 sibling of a .json sidecar exists.
+
+    Sidecars are committed to git; the actual video files are not (too
+    large). On GH Actions runners, the queue JSON is present but the mp4s
+    are not. This re-downloads the mp4 by calling the source API with the
+    identifier stored in the sidecar, without any search or filtering.
+    """
+    if clip_json.name.endswith(".llm.json"):
+        return None
+    mp4 = clip_json.with_suffix(".mp4")
+    if mp4.exists():
+        return mp4
+    try:
+        meta = json.loads(clip_json.read_text())
+    except json.JSONDecodeError:
+        log.error("ensure_local_video: bad sidecar %s", clip_json)
+        return None
+    source = meta.get("source")
+    ident = meta.get("identifier")
+    if not (source and ident):
+        log.error("ensure_local_video: sidecar missing source/identifier: %s", clip_json)
+        return None
+
+    log.info("ensure_local_video: mp4 missing, fetching from %s id=%s", source, ident)
+    if source == "pexels":
+        if not cfg.pexels_api_key:
+            log.error("ensure_local_video: PEXELS_API_KEY not set")
+            return None
+        try:
+            r = requests.get(
+                f"https://api.pexels.com/videos/videos/{ident}",
+                headers={"Authorization": cfg.pexels_api_key},
+                timeout=30,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            log.error("Pexels re-fetch failed: %s", e)
+            return None
+        files = sorted(
+            data.get("video_files", []),
+            key=lambda f: (f.get("width") or 0) * (f.get("height") or 0),
+            reverse=True,
+        )
+        for f in files:
+            if (f.get("width") or 0) >= 1080 and f.get("link"):
+                return _download(f["link"], mp4)
+        log.error("Pexels: no suitable file for id=%s", ident)
+        return None
+    if source == "pixabay":
+        if not cfg.pixabay_api_key:
+            log.error("ensure_local_video: PIXABAY_API_KEY not set")
+            return None
+        try:
+            r = requests.get(
+                "https://pixabay.com/api/videos/",
+                params={"key": cfg.pixabay_api_key, "id": ident},
+                timeout=30,
+            )
+            r.raise_for_status()
+            hits = r.json().get("hits", [])
+        except Exception as e:
+            log.error("Pixabay re-fetch failed: %s", e)
+            return None
+        if not hits:
+            log.error("Pixabay: no hit for id=%s", ident)
+            return None
+        videos = hits[0].get("videos", {}) or {}
+        for size in ("large", "medium", "small", "tiny"):
+            v = videos.get(size) or {}
+            if v.get("url") and v.get("width", 0) >= 1080:
+                return _download(v["url"], mp4)
+        log.error("Pixabay: no suitable rendition for id=%s", ident)
+        return None
+    log.error("ensure_local_video: unknown source %r", source)
+    return None
+
+
 def _download(url: str, out_path: Path) -> Path | None:
     """Stream-download a file with requests. Returns path or None."""
     try:
