@@ -16,15 +16,17 @@ SYSTEM_PROMPT = """You write Instagram captions for a wildlife/conservation acco
 
 SPECIES ACCURACY — ABSOLUTE PRIORITY.
 
-The clip metadata contains two species-related fields:
-  - `query_used`: the search term used to FIND the clip (may be wrong)
-  - `species_verified`: the species actually shown in the clip, extracted from the source platform's own title/slug
+The clip metadata contains:
+  - `species`: the species name, if one could be resolved.
+  - `species_confidence`: "slug" (source platform's own title said so — trust it), "inferred" (best-educated guess from combining query + generic slug terms — still reasonable to name, but hedge specific claims), or "" (nothing resolved — stay generic).
+  - `query_used`: the search term used to find the clip. Often wrong on its own. NEVER use this as ground truth for species ID.
 
-You MUST write the caption about `species_verified` if it is present. Ignore `query_used` for species identification. They are frequently different — e.g. a search for "bald eagle" may return a "white-bellied sea eagle" clip. Writing about the wrong species is a catastrophic error.
+Rules:
+  - `species_confidence == "slug"` → write with confidence about this species. Specific claims (population numbers, legal protections, geographic range) must apply to THIS species.
+  - `species_confidence == "inferred"` → you may name the species, but keep specific claims conservative — prefer habitat- or genus-level claims over narrow numbers, unless you're confident the fact applies.
+  - `species_confidence == ""` → do NOT name a species. Use generic phrasing ("the heron," "these birds," "a raptor at dusk"). Generic but correct beats specific but wrong.
 
-If `species_verified` is empty or "unknown", write the caption in generic terms ("the heron," "these birds," "a raptor at dusk") — do NOT name a species you cannot confirm. Generic but correct beats specific but wrong.
-
-When writing conservation specifics (population numbers, threat history, legal protections, geographic range), they must apply to `species_verified` — NOT to a different species the reader might expect. A white-bellied sea eagle is NOT a bald eagle: different continent, different listing status, different threats. If you are unsure of the exact conservation facts for the verified species, write about a threat category that clearly applies to the broader genus or habitat, and keep claims conservative.
+A white-bellied sea eagle is NOT a bald eagle: different continent, different listing status, different threats. A European roller is NOT a lilac-breasted roller. A red parrot may or may not be a scarlet macaw. Always write to the correct species at the correct confidence level.
 
 
 Shape:
@@ -147,21 +149,27 @@ def generate_caption(clip_metadata: dict, api_key: str, clip_path=None) -> dict[
 
     client = Anthropic(api_key=api_key)
 
-    species_verified = clip_metadata.get("species_verified") or ""
+    species = clip_metadata.get("species") or ""
+    conf = clip_metadata.get("species_confidence") or ""
     query_used = clip_metadata.get("query_used") or ""
+    conf_label = {
+        "slug": "verified from source slug",
+        "inferred": "inferred (educated guess) — hedge specific claims",
+        "": "unknown — write generically, do not name a species",
+    }.get(conf, conf)
     user_parts = [
         f"Source: {clip_metadata.get('source', 'unknown')}",
         f"Source URL: {clip_metadata.get('source_url', '')}",
-        f"species_verified: {species_verified or '(none — write generically, do not name a species)'}",
-        f"query_used (may differ from actual subject, DO NOT trust for species ID): {query_used}",
+        f"species: {species or '(none)'}",
+        f"species_confidence: {conf_label}",
+        f"query_used (do NOT use for species ID): {query_used}",
         f"Title: {clip_metadata.get('title', '')}",
     ]
     desc = (clip_metadata.get("description") or "").strip()
     if desc:
         user_parts.append(f"Description: {desc[:800]}")
     user_parts.append(
-        "\nWrite the caption now. Return only the JSON object, no preamble. "
-        "Remember: species_verified is the truth. If it is empty, stay generic."
+        "\nWrite the caption now. Return only the JSON object, no preamble."
     )
 
     log.info("generating caption for: %s", clip_metadata.get("title", "?")[:60])
@@ -200,7 +208,7 @@ HOOK_SYSTEM_PROMPT = """You write the single-line hook that appears on the stati
 
 The hook sits over a cinematic photograph of a bird in the wild. It is the only text on the image. The viewer reads it in under two seconds and then swipes to the video.
 
-SPECIES ACCURACY: the clip metadata contains `species_verified` (the actual species shown, from the source platform's own title) and `query_used` (the search term that found it — may be wrong). If `species_verified` is present, the hook MUST be about that species. If it is empty, write a generic hook that does not name a specific species. Never name a species you cannot confirm from the metadata.
+SPECIES ACCURACY: clip metadata includes `species` and `species_confidence` ("slug" = verified, "inferred" = educated guess, "" = generic only). If confidence is "slug" or "inferred", you may name the species; if empty, do not name any species.
 
 Write one line only. Rules:
 - 4 to 10 words. Tight.
@@ -226,18 +234,25 @@ Return JSON: {"hook": "your single line here"}"""
 
 
 def _hook_user_message(clip_metadata: dict) -> str:
-    species_verified = clip_metadata.get("species_verified") or ""
+    species = clip_metadata.get("species") or ""
+    conf = clip_metadata.get("species_confidence") or ""
     query_used = clip_metadata.get("query_used") or ""
     subject = clip_metadata.get("subject") or clip_metadata.get("title") or ""
+    conf_label = {
+        "slug": "verified from slug",
+        "inferred": "inferred (educated guess)",
+        "": "unknown — stay generic, do NOT name a species",
+    }.get(conf, conf)
     parts = [
-        f"species_verified: {species_verified or '(none — write a generic hook, do not name a species)'}",
-        f"query_used (may be wrong, DO NOT trust for species ID): {query_used}",
+        f"species: {species or '(none)'}",
+        f"species_confidence: {conf_label}",
+        f"query_used (NOT truth): {query_used}",
         f"Subject: {subject}",
     ]
     desc = (clip_metadata.get("description") or "").strip()
     if desc:
         parts.append(f"Notes from source: {desc[:400]}")
-    parts.append("\nReturn JSON only. Remember: species_verified is truth.")
+    parts.append("\nReturn JSON only.")
     return "\n".join(parts)
 
 

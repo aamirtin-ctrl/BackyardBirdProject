@@ -292,7 +292,9 @@ KNOWN_SPECIES_TERMS = [
     "parakeet", "budgerigar", "budgie", "conure", "lovebird",
     # tropical / exotic
     "toucan", "keel billed toucan", "resplendent quetzal", "quetzal",
-    "hornbill", "bird of paradise", "lilac breasted roller", "roller",
+    "rhinoceros hornbill", "hornbill", "bird of paradise",
+    "lilac breasted roller", "european roller", "indian roller",
+    "abyssinian roller", "roller",
     "bee eater", "kingfisher", "paradise tanager", "tanager",
     "hoatzin", "mandarin duck",
     # water birds
@@ -319,22 +321,117 @@ KNOWN_SPECIES_TERMS = [
 ]
 
 
-def _extract_species(title: str, description: str, query: str) -> str:
-    """Best-effort species name from the clip's own metadata.
+# Ancestor map for species inference. If the clip's slug only contains a
+# generic term (e.g. "parrot") AND the query specifies a more specific
+# species whose ancestors include that generic, we can INFER the specific
+# species as a best-educated guess.
+# Only populated for species where the relationship is unambiguous and
+# the common-sense inference is safe.
+SPECIES_ANCESTORS: dict[str, set[str]] = {
+    # macaws are all parrots
+    "scarlet macaw": {"macaw", "parrot"},
+    "blue and gold macaw": {"macaw", "parrot"},
+    "hyacinth macaw": {"macaw", "parrot"},
+    "macaw": {"parrot"},
+    "african grey parrot": {"parrot"},
+    "amazon parrot": {"parrot"},
+    "cockatoo": {"parrot"},
+    "conure": {"parrot"},
+    "lovebird": {"parrot"},
+    "parakeet": {"parrot"},
+    "budgerigar": {"parrot", "parakeet"},
+    # eagles
+    "bald eagle": {"eagle", "raptor"},
+    "golden eagle": {"eagle", "raptor"},
+    "white-bellied sea eagle": {"sea eagle", "eagle", "raptor"},
+    "sea eagle": {"eagle", "raptor"},
+    "harpy eagle": {"eagle", "raptor"},
+    "philippine eagle": {"eagle", "raptor"},
+    "white tailed eagle": {"eagle", "raptor"},
+    # other raptors
+    "red-tailed hawk": {"hawk", "raptor"},
+    "peregrine falcon": {"falcon", "raptor"},
+    "osprey": {"raptor"},
+    # owls
+    "great horned owl": {"owl"},
+    "snowy owl": {"owl"},
+    "barn owl": {"owl"},
+    "barred owl": {"owl"},
+    "eagle owl": {"owl"},
+    "burrowing owl": {"owl"},
+    "screech owl": {"owl"},
+    # rollers
+    "lilac breasted roller": {"roller"},
+    "european roller": {"roller"},
+    "indian roller": {"roller"},
+    "abyssinian roller": {"roller"},
+    # hornbills
+    "rhinoceros hornbill": {"hornbill"},
+    # hummingbirds
+    "anna's hummingbird": {"hummingbird"},
+    "ruby throated hummingbird": {"hummingbird"},
+    # water birds
+    "great blue heron": {"heron"},
+    "grey heron": {"heron"},
+    "brown pelican": {"pelican"},
+    "white pelican": {"pelican"},
+    "whooping crane": {"crane"},
+    "sandhill crane": {"crane"},
+    "mute swan": {"swan"},
+    "mallard": {"duck"},
+    "wood duck": {"duck"},
+    # tropical
+    "keel billed toucan": {"toucan"},
+    "resplendent quetzal": {"quetzal"},
+}
 
-    Priority: title/description (ground truth from Pexels/Pixabay) over the
-    search query (which may be a semantically-adjacent miss). Returns the
-    longest/most-specific match, or empty string if nothing matches.
+
+def _extract_species(title: str, description: str, query: str) -> tuple[str, str]:
+    """Return (species, confidence) for the clip.
+
+    Confidence is one of:
+      - "slug": species directly matched from the source platform's own
+        slug/title/description. Most trustworthy.
+      - "inferred": slug gave only a generic term (e.g. "parrot"), but the
+        query specifies a species whose ancestors include that generic.
+        Best-educated guess.
+      - "" (empty): no match. Caption must stay generic.
     """
-    blob = f"{title} {description}".lower()
-    # Strip hyphens/underscores so multi-word species names match.
-    blob = re.sub(r"[-_/]+", " ", blob)
-    matches = [s for s in KNOWN_SPECIES_TERMS if s in blob]
-    if not matches:
-        return ""
-    # Prefer the longest (most specific) match.
-    matches.sort(key=len, reverse=True)
-    return matches[0]
+    def _normalize(t: str) -> str:
+        return re.sub(r"[-_/]+", " ", t.lower())
+
+    slug_blob = _normalize(f"{title} {description}")
+    query_norm = _normalize(query)
+
+    slug_matches = [s for s in KNOWN_SPECIES_TERMS if s in slug_blob]
+    slug_matches.sort(key=len, reverse=True)  # most specific first
+
+    query_matches = [s for s in KNOWN_SPECIES_TERMS if s in query_norm]
+    query_matches.sort(key=len, reverse=True)
+
+    slug_best = slug_matches[0] if slug_matches else ""
+    query_best = query_matches[0] if query_matches else ""
+
+    # Case 1: slug has a match. Is it the MOST specific we could use?
+    if slug_best:
+        # If the query has a more specific species whose ancestors include
+        # the slug's match, the query species is a plausible upgrade.
+        if query_best and query_best != slug_best:
+            query_ancestors = SPECIES_ANCESTORS.get(query_best, set())
+            if slug_best in query_ancestors:
+                # Query is a biologically-consistent specialization of the slug.
+                return query_best, "inferred"
+        return slug_best, "slug"
+
+    # Case 2: slug has nothing but the query does. Inferred but weaker —
+    # only trust if the slug CLEARLY describes a bird at all.
+    if query_best:
+        # Look for any bird-family words in the slug. If present, the query
+        # is a reasonable guess.
+        if _has_bird([], slug_blob):
+            return query_best, "inferred"
+
+    return "", ""
 
 
 # ----------------------------- Pexels ----------------------------------
@@ -451,10 +548,7 @@ def pull_from_pexels(
         log.info("Pexels: downloading id=%s %dx%d %ss",
                  vid_id, picked["width"], picked["height"], v.get("duration"))
         if _download(picked["link"], out_path):
-            # Extract ACTUAL species from the Pexels URL slug — this is the
-            # failsafe against "query was 'bald eagle' but the clip is
-            # actually a white-bellied sea eagle" misidentification.
-            species = _extract_species(page_url, "", query)
+            species, conf = _extract_species(page_url, "", query)
             sidecar_meta = {
                 "source": "pexels",
                 "source_url": page_url,
@@ -462,16 +556,16 @@ def pull_from_pexels(
                 "title": f"{query} (Pexels {vid_id})",
                 "description": f"Pexels video by {v.get('user', {}).get('name', '')}",
                 "query_used": query,
-                "species_verified": species,
-                "species_source": "pexels_slug" if species else "unknown",
+                "species": species,
+                "species_confidence": conf,   # "slug" | "inferred" | ""
                 "subject": species or query,
                 "tags": tags,
             }
             if not species:
-                log.warning("Pexels %s: could not extract species from slug %s — caption must be generic",
+                log.warning("Pexels %s: no species resolved — caption must stay generic (slug=%s)",
                             vid_id, page_url)
             else:
-                log.info("Pexels %s: verified species = %r (from slug)", vid_id, species)
+                log.info("Pexels %s: species=%r (confidence=%s)", vid_id, species, conf)
             _write_sidecar(out_path, sidecar_meta)
             out.append(out_path)
     log.info("Pexels: pulled %d/%d for %r (skipped: %s)", len(out), count, query, skipped)
@@ -575,7 +669,7 @@ def pull_from_pixabay(
         log.info("Pixabay: downloading id=%s %dx%d %ss",
                  vid_id, picked["width"], picked["height"], h.get("duration"))
         if _download(picked["url"], out_path):
-            species = _extract_species(page_url, tags_raw, query)
+            species, conf = _extract_species(page_url, tags_raw, query)
             sidecar_meta = {
                 "source": "pixabay",
                 "source_url": page_url,
@@ -583,15 +677,15 @@ def pull_from_pixabay(
                 "title": f"{query} (Pixabay {vid_id})",
                 "description": tags_raw,
                 "query_used": query,
-                "species_verified": species,
-                "species_source": "pixabay_tags" if species else "unknown",
+                "species": species,
+                "species_confidence": conf,
                 "subject": species or query,
                 "tags": tags,
             }
             if not species:
-                log.warning("Pixabay %s: could not extract species from tags %r", vid_id, tags_raw)
+                log.warning("Pixabay %s: no species resolved (tags=%r)", vid_id, tags_raw)
             else:
-                log.info("Pixabay %s: verified species = %r", vid_id, species)
+                log.info("Pixabay %s: species=%r (confidence=%s)", vid_id, species, conf)
             _write_sidecar(out_path, sidecar_meta)
             out.append(out_path)
     log.info("Pixabay: pulled %d/%d for %r (skipped: %s)", len(out), count, query, skipped)
