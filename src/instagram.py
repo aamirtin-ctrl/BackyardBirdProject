@@ -59,11 +59,36 @@ def create_reels_container(video_url: str, caption: str, cfg: Config) -> str:
     return cid
 
 
+def _post_with_retry(url: str, data: dict, tries: int = 4, base_delay: float = 5.0) -> dict:
+    """POST with exponential backoff on 'Media download has failed' / code 9004.
+
+    This happens when IG tries to fetch the media URI before the R2 CDN
+    has propagated the object globally. Retry with a settle delay.
+    """
+    last_err: Exception | None = None
+    for attempt in range(tries):
+        try:
+            return _post(url, data)
+        except IGError as e:
+            msg = str(e)
+            retryable = ("code\":9004" in msg or "Media download" in msg
+                         or "could not be fetched" in msg or "502" in msg
+                         or "503" in msg or "504" in msg)
+            last_err = e
+            if not retryable or attempt == tries - 1:
+                raise
+            delay = base_delay * (2 ** attempt)
+            log.warning("IG create: retryable error, sleeping %.1fs (attempt %d/%d): %s",
+                        delay, attempt + 1, tries, msg[:150])
+            time.sleep(delay)
+    raise last_err  # unreachable
+
+
 def create_image_child(image_url: str, cfg: Config) -> str:
     """IMAGE carousel child. is_carousel_item=true is required."""
     url = f"{GRAPH_BASE}/{cfg.ig_user_id}/media"
     log.info("IG: creating image child (%s)", image_url)
-    resp = _post(url, {
+    resp = _post_with_retry(url, {
         "image_url": image_url,
         "is_carousel_item": "true",
         "access_token": cfg.ig_access_token,
@@ -79,7 +104,7 @@ def create_video_child(video_url: str, cfg: Config) -> str:
     """VIDEO carousel child. Note: media_type=VIDEO, NOT REELS, for carousels."""
     url = f"{GRAPH_BASE}/{cfg.ig_user_id}/media"
     log.info("IG: creating video child (%s)", video_url)
-    resp = _post(url, {
+    resp = _post_with_retry(url, {
         "media_type": "VIDEO",
         "video_url": video_url,
         "is_carousel_item": "true",

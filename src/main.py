@@ -149,6 +149,11 @@ def _post_static_video(
     else:
         image_url = storage.upload(static_path, cfg, key=f"static/{static_path.name}")
         video_url = storage.upload(clip, cfg, key=f"video/{clip.name}")
+        # R2 public URLs can take a few seconds to propagate globally.
+        # IG's server fetches from its own region, so a small settle delay
+        # avoids the most common 'Media could not be fetched' race.
+        import time as _t
+        _t.sleep(8)
 
     # 5. Publish carousel
     media_id = instagram.post_carousel_static_video(
