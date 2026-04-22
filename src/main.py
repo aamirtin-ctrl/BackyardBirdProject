@@ -8,7 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import caption, instagram, post_styles, sources, state, static_image, storage, video
+from . import caption, instagram, post_styles, sounds, sources, state, static_image, storage, video
 from .config import (
     Config, DATA_DIR, POSTED_DIR, QUEUE_DIR, RAW_DIR, setup_logging,
 )
@@ -130,9 +130,16 @@ def _post_static_video(
     if not result:
         raise RuntimeError("static image build failed")
 
-    # 3. Caption for the whole carousel (long-form + hashtags)
+    # 3. Caption for the whole carousel (long-form + hashtags + tone)
     cap_result = caption.generate_caption(meta, cfg.anthropic_api_key, clip_path=clip)
     final_text = caption.compose_final(cap_result["caption"], cap_result["hashtags"])
+
+    # 3b. Pick a music track based on tone. Fallback to "ambient" if the LLM
+    # didn't classify (e.g., old sidecars that predate tone_bucket).
+    tone_bucket = cap_result.get("tone_bucket") or "ambient"
+    track = sounds.pick_sound(tone_bucket, state.recent_sound_ids(n=15))
+    log.info("audio: tone=%s -> track #%s %r by %s",
+             tone_bucket, track["id"], track["track"], track["artist"])
 
     # 4. Upload both assets
     if dry:
@@ -147,11 +154,20 @@ def _post_static_video(
     media_id = instagram.post_carousel_static_video(
         image_url, video_url, final_text, cfg, dry_run=dry
     )
+    # 6. Print the manual-audio-add note so it's visible in logs (and in
+    # GitHub Actions output, so the user can go add it via the IG app).
+    print(sounds.format_manual_add_instructions(track))
+    log.info("MANUAL: add track #%s (%s by %s) via IG app",
+             track["id"], track["track"], track["artist"])
     return media_id, {
         "hook": hook,
         "caption_warnings": cap_result["warnings"],
         "image_url": image_url,
         "video_url": video_url,
+        "sound_id": track["id"],
+        "sound_name": track["track"],
+        "sound_artist": track["artist"],
+        "tone_bucket": tone_bucket,
     }
 
 
@@ -159,6 +175,8 @@ def _post_reels(clip: Path, meta: dict, cfg: Config, dry: bool) -> tuple[str, di
     """Single REELS post (legacy v1 style)."""
     cap_result = caption.generate_caption(meta, cfg.anthropic_api_key, clip_path=clip)
     final_text = caption.compose_final(cap_result["caption"], cap_result["hashtags"])
+    tone_bucket = cap_result.get("tone_bucket") or "ambient"
+    track = sounds.pick_sound(tone_bucket, state.recent_sound_ids(n=15))
 
     if dry:
         video_url = f"file://{clip.resolve()}"
@@ -167,9 +185,14 @@ def _post_reels(clip: Path, meta: dict, cfg: Config, dry: bool) -> tuple[str, di
         video_url = storage.upload(clip, cfg, key=f"video/{clip.name}")
 
     media_id = instagram.post_reel(video_url, final_text, cfg, dry_run=dry)
+    print(sounds.format_manual_add_instructions(track))
     return media_id, {
         "caption_warnings": cap_result["warnings"],
         "video_url": video_url,
+        "sound_id": track["id"],
+        "sound_name": track["track"],
+        "sound_artist": track["artist"],
+        "tone_bucket": tone_bucket,
     }
 
 
@@ -207,7 +230,11 @@ def run(dry_run: bool = False) -> int:
     if dry:
         log.info("DRY-RUN: skipping state update and file archival")
     else:
-        state.mark_posted(clip.name, media_id, source_url=meta.get("source_url", ""))
+        state.mark_posted(
+            clip.name, media_id,
+            source_url=meta.get("source_url", ""),
+            sound_id=info.get("sound_id"),
+        )
         dest = POSTED_DIR / clip.name
         shutil.move(str(clip), str(dest))
         for suf in (".json", ".llm.json"):

@@ -1,0 +1,231 @@
+{
+  "buckets": {
+    "sad": {
+      "description": "Grief, loss, extinction, decline, death, habitat destruction, climate despair.",
+      "ids": [
+        1,
+        2,
+        5,
+        10
+      ]
+    },
+    "ambient": {
+      "description": "Stillness, meditation, quiet awe, solitude, wonder, contemplation.",
+      "ids": [
+        6,
+        7,
+        8,
+        15
+      ]
+    },
+    "hopeful": {
+      "description": "Recovery, rescue, release, rehabilitation, triumph, playful or joyful, hopeful action.",
+      "ids": [
+        3,
+        4,
+        9,
+        11,
+        12,
+        13,
+        14
+      ]
+    }
+  },
+  "sounds": [
+    {
+      "id": 1,
+      "bucket": "sad",
+      "track": "Experience",
+      "artist": "Ludovico Einaudi",
+      "tone": "Sad \u2192 Hopeful",
+      "mood_tags": "piano, strings, slow build, cathartic swell",
+      "bpm": 70.0,
+      "why_it_works": "Classic 'save the species' arc \u2014 melancholic opening resolves into soaring strings. Reads as loss turning into hope.",
+      "use_case": "Endangered-species montages, before/after rehab clips, time-lapse of habitat recovery",
+      "tiktok_search": "https://www.tiktok.com/music/Einaudi-Experience-6749405407854200834",
+      "youtube_preview": "https://www.youtube.com/watch?v=9MLMeMnfl2I"
+    },
+    {
+      "id": 2,
+      "bucket": "sad",
+      "track": "Nuvole Bianche",
+      "artist": "Ludovico Einaudi",
+      "tone": "Sad / melancholic",
+      "mood_tags": "solo piano, aching, understated",
+      "bpm": 64.0,
+      "why_it_works": "Quieter cousin of Experience \u2014 stays in the sadness rather than resolving. Works for loss, extinction, end-of-life sanctuary stories.",
+      "use_case": "Tributes to deceased rescue animals, 'last of its kind' posts, orphaned wildlife",
+      "tiktok_search": "https://www.tiktok.com/search?q=nuvole%20bianche",
+      "youtube_preview": "https://www.youtube.com/watch?v=ZqBUt1NjS9c"
+    },
+    {
+      "id": 3,
+      "bucket": "hopeful",
+      "track": "Time",
+      "artist": "Hans Zimmer (Inception OST)",
+      "tone": "Hopeful / cinematic",
+      "mood_tags": "ambient drones, orchestral crescendo, monumental",
+      "bpm": 60.0,
+      "why_it_works": "The 'wide shot' sound. Big, patient build feels like Planet Earth \u2014 scale, awe, the stakes of a whole ecosystem.",
+      "use_case": "Drone footage, reveal shots of landscapes, 'we still have time' climate messaging",
+      "tiktok_search": "https://www.tiktok.com/search?q=hans%20zimmer%20time%20slowed",
+      "youtube_preview": "https://www.youtube.com/watch?v=RxabLA7UQ9k"
+    },
+    {
+      "id": 4,
+      "bucket": "hopeful",
+      "track": "Cornfield Chase",
+      "artist": "Hans Zimmer (Interstellar OST)",
+      "tone": "Hopeful / epic",
+      "mood_tags": "pulsing organ, uplifting, adventurous",
+      "bpm": 110.0,
+      "why_it_works": "Has forward momentum \u2014 perfect for 'they made it' rescue/release moments (cub being released, whale swimming free).",
+      "use_case": "Release-to-wild clips, migration footage, reforestation time-lapses",
+      "tiktok_search": "https://www.tiktok.com/search?q=cornfield%20chase",
+      "youtube_preview": "https://www.youtube.com/watch?v=fD-xC8mPFrY"
+    },
+    {
+      "id": 5,
+      "bucket": "sad",
+      "track": "On the Nature of Daylight",
+      "artist": "Max Richter",
+      "tone": "Sad / devastating",
+      "mood_tags": "string ensemble, mournful, gradual",
+      "bpm": 52.0,
+      "why_it_works": "The heaviest sound on this list. Used in Arrival, The Leftovers \u2014 communicates collective grief. For poaching, oil spills, mass die-offs.",
+      "use_case": "Climate grief posts, species-loss tributes, habitat destruction montages",
+      "tiktok_search": "https://www.tiktok.com/search?q=on%20the%20nature%20of%20daylight",
+      "youtube_preview": "https://www.youtube.com/watch?v=rVN1BjQVZDs"
+    },
+    {
+      "id": 6,
+      "bucket": "ambient",
+      "track": "Snowfall",
+      "artist": "\u00d8neheart x reidenshi",
+      "tone": "Ambient / meditative",
+      "mood_tags": "liminal ambient, reverb-heavy, ghostly",
+      "bpm": 85.0,
+      "why_it_works": "Creates stillness. Instead of pushing emotion, it lets the viewer sit with the image \u2014 quiet awe of snow leopards, deep-sea footage, polar ice.",
+      "use_case": "Slow-motion animal behavior, polar/underwater footage, 'lonely planet' vibes",
+      "tiktok_search": "https://www.tiktok.com/music/snowfall-7043672073613936641",
+      "youtube_preview": "https://www.youtube.com/watch?v=A7rDHVG7dXE"
+    },
+    {
+      "id": 7,
+      "bucket": "ambient",
+      "track": "Near Light",
+      "artist": "\u00d3lafur Arnalds",
+      "tone": "Ambient / melancholic",
+      "mood_tags": "neoclassical, piano + strings, Icelandic minimalism",
+      "bpm": 70.0,
+      "why_it_works": "Feels cold and vast \u2014 lends gravitas without being heavy-handed. Conservation accounts love this for Arctic/tundra and marine content.",
+      "use_case": "Glacier footage, whale migrations, slow-pan landscape reels",
+      "tiktok_search": "https://www.tiktok.com/search?q=near%20light%20olafur%20arnalds",
+      "youtube_preview": "https://www.youtube.com/watch?v=y8d8H9YnXxA"
+    },
+    {
+      "id": 8,
+      "bucket": "ambient",
+      "track": "a dream",
+      "artist": "Flatsound",
+      "tone": "Ambient / reflective",
+      "mood_tags": "lo-fi ambient, intimate, bedroom-core",
+      "bpm": 72.0,
+      "why_it_works": "Introspective rather than grand. Pairs well with 'what we're losing' voiceovers and quiet, handheld animal footage.",
+      "use_case": "First-person rescue stories, volunteer diaries, sanctuary POV videos",
+      "tiktok_search": "https://www.tiktok.com/search?q=a%20dream%20flatsound",
+      "youtube_preview": "https://www.youtube.com/watch?v=JaIA4gwy6Bw"
+    },
+    {
+      "id": 9,
+      "bucket": "hopeful",
+      "track": "Merry-Go-Round of Life",
+      "artist": "Joe Hisaishi (Howl's Moving Castle)",
+      "tone": "Hopeful / whimsical",
+      "mood_tags": "waltzing piano, sweeping strings, nostalgic",
+      "bpm": 82.0,
+      "why_it_works": "Wonder and childlike awe \u2014 animals being curious, playful, being born. Reads as pure joy without being saccharine.",
+      "use_case": "Baby animals, interspecies friendships, first-steps-of-a-calf moments",
+      "tiktok_search": "https://www.tiktok.com/search?q=merry%20go%20round%20of%20life",
+      "youtube_preview": "https://www.youtube.com/watch?v=bygF02Y3B6E"
+    },
+    {
+      "id": 10,
+      "bucket": "sad",
+      "track": "River Flows in You",
+      "artist": "Yiruma",
+      "tone": "Sad \u2192 Hopeful / gentle",
+      "mood_tags": "solo piano, flowing, melodic",
+      "bpm": 70.0,
+      "why_it_works": "Warm, watery feeling \u2014 literally 'river' in the title. Reads as gentle release and continuity. Very 'donation CTA at the end' energy.",
+      "use_case": "Rehabilitation progress clips, wildlife corridors, water/wetland content",
+      "tiktok_search": "https://www.tiktok.com/search?q=river%20flows%20in%20you",
+      "youtube_preview": "https://www.youtube.com/watch?v=7maJOI3QMu0"
+    },
+    {
+      "id": 11,
+      "bucket": "hopeful",
+      "track": "Arrival of the Birds",
+      "artist": "The Cinematic Orchestra",
+      "tone": "Hopeful / cinematic",
+      "mood_tags": "swelling strings, soaring, pastoral",
+      "bpm": 90.0,
+      "why_it_works": "Literally written for David Attenborough's 'The Crimson Wing.' Peak nature-doc DNA \u2014 gentle rise into a goosebumps peak.",
+      "use_case": "Bird migrations, flock formations, release-to-sky moments, hero wide shots",
+      "tiktok_search": "https://www.tiktok.com/search?q=arrival%20of%20the%20birds",
+      "youtube_preview": "https://www.youtube.com/watch?v=vRwU0zHo5ss"
+    },
+    {
+      "id": 12,
+      "bucket": "hopeful",
+      "track": "Divenire",
+      "artist": "Ludovico Einaudi",
+      "tone": "Hopeful / cinematic",
+      "mood_tags": "piano + strings, 'becoming,' gradual lift",
+      "bpm": 76.0,
+      "why_it_works": "Italian for 'becoming.' Builds patiently from solo piano to full orchestral \u2014 perfect narrative arc for 'from rescue to release.'",
+      "use_case": "Long-form rehab journeys, rewilding stories, habitat restoration over time",
+      "tiktok_search": "https://www.tiktok.com/search?q=divenire%20einaudi",
+      "youtube_preview": "https://www.youtube.com/watch?v=ZRuHB20_3E4"
+    },
+    {
+      "id": 13,
+      "bucket": "hopeful",
+      "track": "Your Hand in Mine",
+      "artist": "Explosions in the Sky",
+      "tone": "Hopeful / mellow",
+      "mood_tags": "post-rock, guitar build, FNL-core, bittersweet",
+      "bpm": 70.0,
+      "why_it_works": "Wordless guitar post-rock. Reads as 'quiet triumph' \u2014 not grand orchestra, more personal and earned.",
+      "use_case": "Underdog recovery stories, hand-raised orphans, long-term sanctuary residents",
+      "tiktok_search": "https://www.tiktok.com/search?q=your%20hand%20in%20mine",
+      "youtube_preview": "https://www.youtube.com/watch?v=cdiY6kijYHE"
+    },
+    {
+      "id": 14,
+      "bucket": "hopeful",
+      "track": "Outro",
+      "artist": "M83",
+      "tone": "Hopeful / cinematic",
+      "mood_tags": "anthemic, synth + orchestra, triumphant",
+      "bpm": 104.0,
+      "why_it_works": "The 'heroes are born' song. Huge, cathartic, modern-cinematic \u2014 when you want the viewer to feel like they just finished a film.",
+      "use_case": "Campaign wrap-ups, year-in-review reels, 'you helped us do this' donor posts",
+      "tiktok_search": "https://www.tiktok.com/search?q=m83%20outro",
+      "youtube_preview": "https://www.youtube.com/watch?v=8mq4UT4VnbE"
+    },
+    {
+      "id": 15,
+      "bucket": "ambient",
+      "track": "Spiegel im Spiegel",
+      "artist": "Arvo P\u00e4rt",
+      "tone": "Mellow / meditative",
+      "mood_tags": "piano + violin, tintinnabuli, contemplative",
+      "bpm": 50.0,
+      "why_it_works": "Slowest and stillest on the list. Time dilates. For quiet awe \u2014 an old elephant, a sleeping orangutan, a dawn landscape.",
+      "use_case": "End-of-life tributes, contemplative wide shots, 'pause and notice' posts",
+      "tiktok_search": "https://www.tiktok.com/search?q=spiegel%20im%20spiegel",
+      "youtube_preview": "https://www.youtube.com/watch?v=TJ6Mzvh3XCc"
+    }
+  ]
+}

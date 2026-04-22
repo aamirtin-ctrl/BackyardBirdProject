@@ -44,10 +44,15 @@ Repo: https://github.com/<OWNER>/<REPO>   ← replace before first run
    - Caption rules: `src/caption.py` → `SYSTEM_PROMPT` constant (includes species-accuracy rule + full reference caption)
    - Project feedback memory: /Users/aamirtinwala/.claude/projects/-Users-aamirtinwala-Desktop-Market-Research-agent-md-files/memory/feedback_ig_poster_content_rules.md
 
-8. Generate three outputs for THIS specific clip, anchored on `species_verified` (not `query_used`):
+8. Generate four outputs for THIS specific clip, anchored on `species_verified` (not `query_used`):
    - `hook`: one line, 4–10 words. Tender/haunting/provocative. If species is verified, can name it; if not, stay generic. No em dashes.
    - `caption`: 90–160 words. Hook line + cohesive narrative body (sentences chain with connectives, vary in length, focus on dangers this species faces with concrete specifics). No em dashes.
    - `hashtags`: 15–20 hashtags, mix broad (#wildlife, #conservation, #birding) and niche (species-specific tag based on species_verified, plus threat-specific tags).
+   - `tone_bucket`: exactly one of `"sad"`, `"ambient"`, `"hopeful"`. Pick the dominant emotion of the caption:
+     - `sad` — grief, loss, extinction, decline, habitat destruction, climate despair. The weight sits in what's being lost.
+     - `ambient` — stillness, quiet awe, solitude, contemplation, wonder without a threat-arc. Observational.
+     - `hopeful` — recovery, rescue, release, rehabilitation, triumph, playful, joyful, hopeful action.
+     If the caption moves from sad to hopeful, pick where the final third lands. If genuinely split, pick `sad`.
 
 9. Self-check BEFORE writing to the sidecar:
    - **Species check:** the species claimed in the caption matches `species_verified` exactly, OR the caption is generic. If `query_used` and `species_verified` differ, the caption is about species_verified.
@@ -57,7 +62,7 @@ Repo: https://github.com/<OWNER>/<REPO>   ← replace before first run
    - Caption 90–160 words. Hook 4–10 words. Hashtags 15–20.
 
 ## Write sidecar + push
-9. Write the JSON to `<clip_path_without_extension>.llm.json` with exactly three keys: `hook`, `caption`, `hashtags`.
+9. Write the JSON to `<clip_path_without_extension>.llm.json` with exactly four keys: `hook`, `caption`, `hashtags`, `tone_bucket`.
 10. `git add <the new file>`, commit with message `chore: pre-generate copy for <clip_stem>`, push to `main`.
 
 ## Kick off GitHub Actions

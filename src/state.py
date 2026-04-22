@@ -51,19 +51,30 @@ def mark_posted(
     file: str,
     ig_media_id: str,
     source_url: str = "",
+    sound_id: int | None = None,
     path: Path = STATE_PATH,
 ) -> None:
     s = _load(path)
-    s["posted"].append({
+    entry = {
         "file": file,
         "ig_media_id": ig_media_id,
         "posted_at": datetime.now(timezone.utc).isoformat(),
         "source_url": source_url,
-    })
+    }
+    if sound_id is not None:
+        entry["sound_id"] = sound_id
+    s["posted"].append(entry)
     if source_url and source_url not in s["source_urls_used"]:
         s["source_urls_used"].append(source_url)
     _save(s, path)
-    log.info("state: marked posted %s (ig=%s)", file, ig_media_id)
+    log.info("state: marked posted %s (ig=%s, sound=%s)", file, ig_media_id, sound_id)
+
+
+def recent_sound_ids(n: int = 15, path: Path = STATE_PATH) -> list[int]:
+    """Return sound_ids from the most recent N posts, oldest-first."""
+    s = _load(path)
+    ids = [p["sound_id"] for p in s.get("posted", []) if "sound_id" in p]
+    return ids[-n:]
 
 
 def mark_source_used(source_url: str, path: Path = STATE_PATH) -> None:

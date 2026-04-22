@@ -54,7 +54,16 @@ Voice rules - absolute:
 - Praise by fact, not by adjective.
 - Don't soften the hook with qualifiers. "Maybe you've been lied to" is dead. "You've been lied to" lives.
 
-Return JSON: {"caption": "...", "hashtags": ["#tag1", "#tag2", ...]}
+TONE BUCKET — select one so the pipeline can pick a matching music track.
+
+The output must include a field `tone_bucket` set to exactly one of:
+  - "sad"     — grief, loss, extinction, decline, habitat destruction, climate despair. The emotional weight sits primarily in what is being lost.
+  - "ambient" — stillness, quiet awe, solitude, contemplation, wonder without a specific threat-arc. Observational tone.
+  - "hopeful" — recovery, rescue, release, rehabilitation, triumph, playful, joyful, hopeful action, things getting better.
+
+Pick the bucket that matches the DOMINANT emotion of your caption. If the caption moves from sad to hopeful (e.g., species nearly lost, then partially recovered, but still threatened), pick whichever note the final third of the caption lands on. If genuinely split, pick "sad".
+
+Return JSON: {"caption": "...", "hashtags": ["#tag1", "#tag2", ...], "tone_bucket": "sad"|"ambient"|"hopeful"}
 15-20 hashtags, mix of broad (#wildlife, #conservation, #birding) and niche (species + threat specific)."""
 
 BANNED_PHRASES = [
@@ -139,7 +148,12 @@ def generate_caption(clip_metadata: dict, api_key: str, clip_path=None) -> dict[
         warnings = _validate(caption, hashtags)
         for w in warnings:
             log.warning("caption (sidecar) validation: %s", w)
-        return {"caption": caption, "hashtags": hashtags, "warnings": warnings}
+        return {
+            "caption": caption,
+            "hashtags": hashtags,
+            "warnings": warnings,
+            "tone_bucket": side.get("tone_bucket") or "",
+        }
 
     if not api_key:
         raise RuntimeError(
@@ -189,11 +203,20 @@ def generate_caption(clip_metadata: dict, api_key: str, clip_path=None) -> dict[
 
     warnings = _validate(caption, hashtags)
     caption = _strip_em_dashes(caption)
+    tone_bucket = str(data.get("tone_bucket", "")).strip().lower() or ""
+    if tone_bucket and tone_bucket not in {"sad", "ambient", "hopeful"}:
+        log.warning("invalid tone_bucket %r, clearing", tone_bucket)
+        tone_bucket = ""
 
     for w in warnings:
         log.warning("caption validation: %s", w)
 
-    return {"caption": caption, "hashtags": hashtags, "warnings": warnings}
+    return {
+        "caption": caption,
+        "hashtags": hashtags,
+        "warnings": warnings,
+        "tone_bucket": tone_bucket,
+    }
 
 
 def compose_final(caption: str, hashtags: list[str]) -> str:
