@@ -30,16 +30,12 @@ jobs:
       - name: Install deps
         run: uv sync
 
-      - name: Restore state + queue
-        uses: actions/cache@v4
-        with:
-          path: |
-            data/state.json
-            data/queue
-            data/posted
-          key: ig-poster-state-${{ github.run_id }}
-          restore-keys: |
-            ig-poster-state-
+      # No cache step — git is the source of truth for state.json and for
+      # the .json queue/posted sidecars. The .mp4 files are re-downloaded
+      # lazily by sources.ensure_local_video() from Pexels/Pixabay as
+      # needed. Caching state overrode git-committed state and broke the
+      # sound-rotation logic (two consecutive posts got sound_id=1 because
+      # the cache restored a pre-backfill state.json).
 
       - name: Run pipeline
         env:
