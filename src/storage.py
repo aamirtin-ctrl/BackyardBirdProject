@@ -35,7 +35,19 @@ CONTENT_TYPES = {
 
 
 def upload(local_path: Path, cfg: Config, key: str | None = None) -> str:
-    """Upload local_path to R2, return public URL."""
+    """Upload local_path to R2, return an S3 presigned GET URL.
+
+    We used to return the `pub-*.r2.dev` public URL, but Cloudflare
+    aggressively rate-limits that subdomain (it's officially for
+    development only). Instagram's fetcher gets blocked within a day
+    or two of normal use. Presigned URLs go through the S3-compatible
+    endpoint and bypass that rate limit entirely — same bucket, same
+    object, no public-access requirement, signature embedded in the URL.
+
+    Expiry: 2 hours. IG's end-to-end processing (upload -> create
+    container -> wait FINISHED -> create carousel -> wait FINISHED ->
+    publish) takes under 5 minutes typically, so 2h is huge slack.
+    """
     key = key or local_path.name
     client = _client(cfg)
     ctype = CONTENT_TYPES.get(local_path.suffix.lower(), "application/octet-stream")
@@ -46,9 +58,12 @@ def upload(local_path: Path, cfg: Config, key: str | None = None) -> str:
         key,
         ExtraArgs={"ContentType": ctype},
     )
-    base = cfg.r2_public_base_url.rstrip("/")
-    url = f"{base}/{key}"
-    log.info("R2: public URL: %s", url)
+    url = client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": cfg.r2_bucket, "Key": key},
+        ExpiresIn=7200,  # 2 hours
+    )
+    log.info("R2: presigned URL issued (key=%s, expires in 2h)", key)
     return url
 
 
